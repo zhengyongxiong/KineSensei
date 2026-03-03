@@ -28,6 +28,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db.init_app(app)  # ✅ 正确绑定 app
 
+with app.app_context():
+    db.create_all()  # ✅ 自动创建数据库表
+
 # ------------------- 权限装饰器 -------------------
 def login_required(f):
     @wraps(f)
