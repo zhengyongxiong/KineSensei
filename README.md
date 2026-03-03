@@ -29,37 +29,37 @@
 
 ```mermaid
 graph TD
-    User([用户 User]) -->|打开网页| Browser[前端浏览器]
-    Browser -->|请求页面| Server[Flask 服务器]
-    Server -->|返回 HTML| Browser
+    User([用户 User]) -->|"打开网页"| Browser["前端浏览器"]
+    Browser -->|"请求页面"| Server["Flask 服务器"]
+    Server -->|"返回 HTML"| Browser
     
     subgraph "实时识别循环 (Real-time Recognition Loop)"
-        Browser -->|1. 采集摄像头帧| Frame[视频帧 Frame]
-        Frame -->|2. POST /api/verify_frame| API[后端 API 接口]
+        Browser -->|"1. 采集摄像头帧"| Frame["视频帧 Frame"]
+        Frame -->|"2. POST /api/verify_frame"| API["后端 API 接口"]
         
-        API -->|3. 调用 Pose Detector| MediaPipe[MediaPipe Pose]
-        MediaPipe -->|4. 提取关键点 (33个)| Keypoints[3D 关键点]
+        API -->|"3. 调用 Pose Detector"| MediaPipe["MediaPipe Pose"]
+        MediaPipe -->|"4. 提取关键点 (33个)"| Keypoints["3D 关键点"]
         
         subgraph "AI 核心处理 (recognizer_api.py)"
-            Keypoints -->|5a. 分割数据| UpperPoints[上肢点集] & LowerPoints[下肢点集]
+            Keypoints -->|"5a. 分割数据"| UpperPoints["上肢点集"] & LowerPoints["下肢点集"]
             
-            UpperPoints -->|6a. 特征提取 (角度/距离)| FeatUp[上肢特征]
-            FeatUp -->|7a. 标准化 (Scaler)| NormUp[归一化特征]
-            NormUp -->|8a. MLP 推理| ModelUp[上肢模型]
-            ModelUp -->|9a. 输出| ResultUp[上肢动作 & 置信度]
+            UpperPoints -->|"6a. 特征提取 (角度/距离)"| FeatUp["上肢特征"]
+            FeatUp -->|"7a. 标准化 (Scaler)"| NormUp["归一化特征"]
+            NormUp -->|"8a. MLP 推理"| ModelUp["上肢模型"]
+            ModelUp -->|"9a. 输出"| ResultUp["上肢动作 & 置信度"]
             
-            LowerPoints -->|6b. 特征提取 (增强特征)| FeatLow[下肢特征]
-            FeatLow -->|7b. 标准化 (Scaler)| NormLow[归一化特征]
-            NormLow -->|8b. MLP 推理| ModelLow[下肢模型]
-            ModelLow -->|9b. 输出| ResultLow[下肢动作 & 置信度]
+            LowerPoints -->|"6b. 特征提取 (增强特征)"| FeatLow["下肢特征"]
+            FeatLow -->|"7b. 标准化 (Scaler)"| NormLow["归一化特征"]
+            NormLow -->|"8b. MLP 推理"| ModelLow["下肢模型"]
+            ModelLow -->|"9b. 输出"| ResultLow["下肢动作 & 置信度"]
         end
         
-        ResultUp & ResultLow -->|10. 逻辑判断 (Pass/Fail)| Logic[判定模块]
-        Logic -->|11. 返回 JSON 结果| Browser
+        ResultUp & ResultLow -->|"10. 逻辑判断 (Pass/Fail)"| Logic["判定模块"]
+        Logic -->|"11. 返回 JSON 结果"| Browser
     end
     
-    Browser -->|12. 显示反馈 (UI)| User
-    Logic -->|13. 存入数据库 (若通过)| DB[(SQLite 数据库)]
+    Browser -->|"12. 显示反馈 (UI)"| User
+    Logic -->|"13. 存入数据库 (若通过)"| DB[("SQLite 数据库")]
 ```
 
 ## 4. 详细代码说明 (Detailed Code Explanation)
