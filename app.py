@@ -49,6 +49,47 @@ def admin_required(f):
         return f(*args, **kwargs)
     return wrapper
 
+@app.route("/setup_db")
+def setup_db():
+    # 1. 设置管理员
+    admin_user = User.query.filter_by(username="test").first()
+    if not admin_user and "user_id" in session:
+        admin_user = User.query.get(session["user_id"])
+    
+    msg = []
+    if admin_user:
+        admin_user.is_admin = True
+        db.session.commit()
+        msg.append(f"用户 {admin_user.username} 已设置为管理员")
+    else:
+        msg.append("未找到用户 test，请先注册或登录")
+
+    # 2. 初始化课程数据
+    if Course.query.count() == 0:
+        c1 = Course(title="Popping 基础入门", description="适合零基础的 Popping 课程", video_url="")
+        c2 = Course(title="Locking 进阶", description="Locking 核心动作教学", video_url="")
+        db.session.add_all([c1, c2])
+        db.session.commit()
+        
+        # 添加关卡
+        l1 = Level(
+            course_id=c1.id,
+            level_number=1,
+            name="Fresno 基础",
+            action_name="fresno",
+            video_url="",
+            require_upper="fresno",
+            pass_condition="upper",
+            pass_score=80
+        )
+        db.session.add(l1)
+        db.session.commit()
+        msg.append("已初始化示例课程数据")
+    else:
+        msg.append("课程数据已存在，跳过初始化")
+
+    return "<br>".join(msg) + "<br><a href='/'>返回首页</a>"
+
 # ------------------- 路由：基础功能 -------------------
 @app.route("/")
 def index():
