@@ -532,35 +532,6 @@ def verify_frame():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-    
-# 添加摄像头读取类（使用 OpenCV）
-class Camera:
-    def __init__(self, index=0):
-        self.cap = cv2.VideoCapture(index)
-
-    def get_frame(self):
-        success, frame = self.cap.read()
-        if not success:
-            return None
-        _, jpeg = cv2.imencode('.jpg', frame)
-        return jpeg.tobytes()
-
-camera = Camera()
-
-def gen_frames(cam_index):
-    cam = Camera(index=cam_index)
-    while True:
-        frame = cam.get_frame()
-        if frame is None:
-            continue
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        
-@app.route("/video_feed")
-def video_feed():
-    cam_index = int(request.args.get("cam", 0))
-    return Response(gen_frames(cam_index), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
