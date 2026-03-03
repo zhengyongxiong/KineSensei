@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html><body>
+<h2>可学习课程列表</h2>
+<ul>
+  {% for c in courses %}
+    <li>
+      {{ c.title }}
+      <a href="{{ url_for('learn_course', course_id=c.id) }}">进入</a>
+    </li>
+  {% endfor %}
+</ul>
+<a href="{{ url_for('dashboard') }}">返回首页</a>
+</body></html>

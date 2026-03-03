@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><body>
+<h2>标准动作视频库</h2>
+
+<h3>上传新视频</h3>
+<form method="post" enctype="multipart/form-data">
+  选择文件：<input type="file" name="video" accept="video/*" required>
+  <button type="submit">上传</button>
+</form>
+
+<h3>当前视频</h3>
+<ul>
+  {% for f in files %}
+    <li>
+      <a href="{{ url_for('static', filename='learn/' + f) }}" target="_blank">{{ f }}</a>
+      <form method="post" action="{{ url_for('delete_video', filename=f) }}" style="display:inline">
+        <button type="submit" onclick="return confirm('确认删除该视频？')">删除</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+
+<a href="{{ url_for('dashboard') }}">返回首页</a>
+</body></html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><body>
+<h2>用户管理</h2>
+<table border="1">
+<tr><th>ID</th><th>用户名</th><th>管理员</th><th>操作</th></tr>
+{% for u in users %}
+<tr>
+  <td>{{ u.id }}</td>
+  <td>{{ u.username }}</td>
+  <td>{{ '是' if u.is_admin else '否' }}</td>
+  <td>
+    {% if not u.is_admin %}
+    <form action="{{ url_for('promote_user', user_id=u.id) }}" method="post" style="display:inline">
+      <button type="submit">设为管理员</button>
+    </form>
+    {% endif %}
+    <form action="{{ url_for('reset_password', user_id=u.id) }}" method="post" style="display:inline">
+      <input name="new_password" placeholder="新密码">
+      <button type="submit">重置密码</button>
+    </form>
+    <form action="{{ url_for('delete_user', user_id=u.id) }}" method="post" style="display:inline">
+      <button type="submit" onclick="return confirm('确认删除？')">删除</button>
+    </form>
+  </td>
+</tr>
+{% endfor %}
+</table>
+<a href="{{ url_for('dashboard') }}">返回首页</a>
+</body></html>

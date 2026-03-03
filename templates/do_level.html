@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>开始学习 - {{ level.name }}</title>
+  <style>
+    body{font-family:sans-serif;background:#f9f9f9;text-align:center;padding:20px;}
+    .container{max-width:800px;margin:auto;background:#fff;padding:20px;border-radius:8px;
+               box-shadow:0 0 10px rgba(0,0,0,.1);}
+    img#video_stream{width:100%;max-width:640px;border:2px solid #007bff;border-radius:6px;margin-top:10px;}
+    .btn{margin:10px;padding:10px 22px;background:#007bff;color:#fff;border:none;
+         border-radius:6px;cursor:pointer;}
+    .btn:hover{background:#0056b3;}
+    #status{font-weight:bold;margin-top:15px;}
+    #confidence_bar{height:20px;width:100%;background:#eee;border-radius:10px;
+                    margin-top:10px;overflow:hidden;display:none;}
+    #confidence_fill{height:100%;width:0;background:#007bff;transition:width 0.3s ease;}
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>🎬 开始学习关卡：{{ level.name }}</h2>
+  <p><strong>所属课程：</strong>{{ level.course.title }}</p>
+  {% if level.course.description %}
+    <p><em>{{ level.course.description }}</em></p>
+  {% endif %}
+  <hr>
+  <p>动作要求：{{ level.action_name }}</p>
+  <p>动作类型：{{ level.pass_condition }}</p>
+  <p>通关分数要求：{{ level.pass_score }}</p>
+  {% if level.video_url %}
+    <p>🎥 演示视频：<a href="{{ level.video_url }}" target="_blank">点击查看</a></p>
+  {% endif %}
+
+  <button class="btn" id="switch_btn">🔄 切换摄像头</button>
+
+  <img id="video_stream" src="" alt="摄像头视频流未加载，请稍候…">
+  <canvas id="capture_canvas" style="display:none;"></canvas>
+
+  <p id="status" data-next-url="{{ url_for('learn_course', course_id=level.course_id) }}">
+      识别状态：初始化中…
+  </p>
+
+  <!-- 进度条区域 -->
+  <div id="confidence_bar">
+    <div id="confidence_fill"></div>
+  </div>
+
+  <button class="btn" id="stop_btn">⛔ 停止识别</button>
+  <a class="btn" href="{{ url_for('learn_course', course_id=level.course_id) }}">← 返回课程关卡</a>
+</div>
+
+<script>
+const img      = document.getElementById('video_stream');
+const canvas   = document.getElementById('capture_canvas');
+const ctx      = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const stopBtn  = document.getElementById('stop_btn');
+const switchBtn= document.getElementById('switch_btn');
+const nextUrl  = statusEl.dataset.nextUrl;
+
+let loopTimer  = null;
+let stopped    = false;
+
+const LOOP_INTERVAL = 500;
+const JPEG_QUALITY  = 0.65;
+const MAX_CAM       = 10;
+let currentCamIdx   = parseInt(localStorage.getItem('selectedCamera') || '0', 10);
+
+function updateConfidenceBar(confidence, passed) {
+  const bar  = document.getElementById('confidence_bar');
+  const fill = document.getElementById('confidence_fill');
+  bar.style.display = 'block';
+  fill.style.width = `${(confidence * 100).toFixed(0)}%`;
+  fill.style.background = passed ? '#28a745' : '#dc3545';
+}
+
+async function autoRecognizeLoop(){
+  if(stopped) return;
+  try{
+    if(img.naturalWidth===0) throw new Error('等待视频流…');
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img,0,0);
+
+    const blob = await new Promise(r=>canvas.toBlob(r,'image/jpeg',JPEG_QUALITY));
+    const fd   = new FormData();
+    fd.append('level_id','{{ level.id }}');
+    fd.append('frame',blob);
+    const rsp  = await fetch('/api/verify_frame',{method:'POST',body:fd});
+    const data = await rsp.json();
+
+    if(!data.success){
+      statusEl.textContent = '❌ 识别失败：' + (data.error || '未知错误');
+    }else if(data.passed){
+      statusEl.textContent = `✅ 识别通过，置信度 ${(data.confidence * 100).toFixed(2)}%，马上跳转…`;
+      updateConfidenceBar(data.confidence, true);
+      stopped = true;
+      setTimeout(() => location.href = nextUrl, 1200); return;
+    }else{
+      statusEl.textContent = `❌ 未通过：置信度 ${(data.confidence * 100).toFixed(2)}%`;
+      updateConfidenceBar(data.confidence, false);
+    }
+  }catch(e){
+    statusEl.textContent='⚠️ '+e.message;
+  }
+  loopTimer=setTimeout(autoRecognizeLoop,LOOP_INTERVAL);
+}
+
+function probeCamera(idx, tried=0){
+  if(tried>=MAX_CAM){
+    statusEl.textContent='🚫 找不到可用摄像头';
+    return;
+  }
+  stopped=true; if(loopTimer) clearTimeout(loopTimer);
+  img.src='';
+  const url=`/video_feed?cam=${idx}&t=${Date.now()}`;
+
+  img.onload=()=>{
+    statusEl.textContent='📡 摄像头 '+idx+' 已就绪，开始识别…';
+    currentCamIdx=idx;
+    localStorage.setItem('selectedCamera',idx);
+    stopped=false;
+    autoRecognizeLoop();
+  };
+
+  img.onerror=()=>{
+    probeCamera((idx+1)%MAX_CAM, tried+1);
+  };
+  img.src=url;
+}
+
+switchBtn.onclick = () => {
+  const nextIdx = (currentCamIdx + 1) % MAX_CAM;
+  statusEl.textContent='🔄 尝试切换到摄像头 '+nextIdx+'…';
+  probeCamera(nextIdx);
+};
+
+stopBtn.onclick = () => {
+  stopped=true; if(loopTimer) clearTimeout(loopTimer);
+  statusEl.textContent='🛑 已手动停止识别';
+};
+
+window.addEventListener('load', () => {
+  statusEl.textContent='🔍 正在探测摄像头…';
+  probeCamera(currentCamIdx);
+});
+</script>
+</body>
+</html>

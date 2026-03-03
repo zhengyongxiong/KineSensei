@@ -1,0 +1,14 @@
+{
+  "leftUp": 0,
+  "lock": 1,
+  "muscleMan": 2,
+  "normal": 3,
+  "pointLeft": 4,
+  "pointLeftPpl": 5,
+  "pointRight": 6,
+  "pointRightPpl": 7,
+  "rightUp": 8,
+  "rollBoth": 9,
+  "rollLeft": 10,
+  "rollRight": 11
+}

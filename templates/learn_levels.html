@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>学习课程 - {{ course.title }}</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; }
+        .container { width: 90%; max-width: 800px; margin: 30px auto; text-align: center; }
+        .level-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .passed { color: green; font-weight: bold; }
+        .unpassed { color: red; }
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🎯 当前课程：{{ course.title }}</h2>
+
+        {% if levels %}
+            {% for level in levels %}
+                <div class="level-card">
+                    <h3>关卡 {{ level.level_number }}：{{ level.name }}</h3>
+                    <p>要求动作：{{ level.action_name }}</p>
+                    {% if level.id in progress and progress[level.id].passed %}
+                        <p class="passed">✅ 已通关</p>
+                        <a class="btn" href="{{ url_for('start_level', level_id=level.id) }}">🔁 重新学习</a>
+                    {% else %}
+                        <p class="unpassed">⏳ 未通关</p>
+                        <a class="btn" href="{{ url_for('start_level', level_id=level.id) }}">开始学习</a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>暂无可学习的关卡。</p>
+        {% endif %}
+
+        <a class="btn" href="{{ url_for('learn_courses') }}">← 返回课程列表</a>
+    </div>
+</body>
+</html>

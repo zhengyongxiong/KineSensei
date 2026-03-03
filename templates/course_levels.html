@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>课程关卡配置 - {{ course.title }}</title>
+  <style>
+    body { font-family: sans-serif; background: #f2f2f2; }
+    .container { width: 90%; max-width: 900px; margin: 30px auto; }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 20px; background: white;
+    }
+    th, td {
+      padding: 12px; border: 1px solid #ddd; text-align: center;
+    }
+    th {
+      background-color: #007bff; color: white;
+    }
+    form.inline-form { display: inline; }
+    .form-block {
+      background: white; padding: 20px; margin-bottom: 20px;
+      border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .btn {
+      padding: 6px 12px; border: none; background-color: #28a745;
+      color: white; border-radius: 4px; cursor: pointer;
+    }
+    .btn-del { background-color: #dc3545; }
+    .action-row { margin-bottom: 8px; display: flex; align-items: center; }
+    .action-row select, .action-row button { margin-right: 6px; }
+    tbody tr.dragging { background: #ffeeba; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>📘 编辑课程信息</h2>
+  <div class="form-block">
+    <form method="POST" action="{{ url_for('update_course', course_id=course.id) }}" enctype="multipart/form-data">
+      <label>课程标题:</label><br>
+      <input name="title" type="text" value="{{ course.title }}" required style="width:100%;"><br><br>
+
+      <label>课程描述:</label><br>
+      <textarea name="description" rows="3" style="width:100%;">{{ course.description }}</textarea><br><br>
+
+      <label>课程视频链接（如需外部链接）:</label><br>
+      <input name="video_url" type="text" value="{{ course.video_url or '' }}" style="width:100%;"><br><br>
+
+      <label>上传课程演示视频:</label><br>
+      {% if course.video_filename %}
+        <details>
+          <summary>🎬 当前视频</summary>
+          <video width="300" controls>
+            <source src="{{ url_for('static', filename='learn/' ~ course.video_filename) }}" type="video/mp4">
+          </video>
+        </details><br>
+      {% endif %}
+      <input name="video" type="file" accept="video/*"><br>
+      <small style="color: gray;">⚠️ 上传后请点击“保存修改”才会生效</small><br><br>
+
+      <button class="btn" type="submit">💾 保存修改</button>
+    </form>
+
+    {% if course.video_filename %}
+      <form method="POST" action="{{ url_for('delete_course_video_admin', course_id=course.id) }}" style="margin-top: 10px;">
+        <button type="submit" class="btn btn-del" onclick="return confirm('确认删除视频？')">删除视频</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="form-block">
+    <h3>添加新关卡</h3>
+    <form method="POST" action="{{ url_for('add_level', course_id=course.id) }}" enctype="multipart/form-data">
+      <label>关卡名称（自定义）:</label>
+      <input name="name" type="text" required><br><br>
+
+      <div id="sequence-container">
+        <label>动作序列:</label>
+        <div class="action-list">
+          <div class="action-row">
+            <select name="action_type[]" required onchange="populateLabelOptions(this, this.nextElementSibling)">
+              <option value="upper">上肢</option>
+              <option value="lower">下肢</option>
+            </select>
+            <select name="action_label[]" required></select>
+            <button type="button" onclick="removeRow(this)">🗑</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="addRow()">➕ 添加动作</button><br><br>
+
+      <label>上传关卡演示视频:</label>
+      <input name="video" type="file" accept="video/*"><br><br>
+
+      <label>通关分数:</label>
+      <input name="pass_score" type="number" value="80"><br><br>
+
+      <button class="btn" type="submit">➕ 添加关卡</button>
+    </form>
+  </div>
+
+  <h3>🧩 当前关卡（可拖动排序）</h3>
+  <table id="level_table">
+    <thead>
+      <tr>
+        <th>编号</th>
+        <th>名称</th>
+        <th>动作</th>
+        <th>视频</th>
+        <th>通关分</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="level_tbody">
+    {% for l in levels %}
+      <tr data-id="{{ l.id }}">
+        <td>{{ l.level_number }}</td>
+        <td>{{ l.name }}</td>
+        <td>{{ l.action_name }}</td>
+        <td>
+          {% if l.video_filename %}
+            <details>
+              <summary>🎬 预览</summary>
+              <video width="220" controls>
+                <source src="{{ url_for('static', filename='learn/' ~ l.video_filename) }}" type="video/mp4">
+              </video>
+            </details>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ l.pass_score }}</td>
+        <td>
+          <form class="inline-form" method="POST" action="{{ url_for('delete_level', course_id=course.id, level_id=l.id) }}">
+            <button class="btn btn-del" type="submit">🗑 删除</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <br><a href="{{ url_for('list_courses') }}">← 返回课程列表</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+const upperMap = {{ upper_map|tojson }};
+const lowerMap = {{ lower_map|tojson }};
+
+function populateLabelOptions(selectType, selectLabel) {
+  const type = selectType.value;
+  const labels = type === 'upper' ? upperMap : lowerMap;
+  selectLabel.innerHTML = '<option value="">请选择</option>';
+  for (const key in labels) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    selectLabel.appendChild(opt);
+  }
+}
+
+function addRow() {
+  const row = document.createElement('div');
+  row.className = 'action-row';
+
+  const selectType = document.createElement('select');
+  selectType.name = 'action_type[]';
+  selectType.required = true;
+  selectType.innerHTML = `
+    <option value="upper">上肢</option>
+    <option value="lower">下肢</option>
+  `;
+
+  const selectLabel = document.createElement('select');
+  selectLabel.name = 'action_label[]';
+  selectLabel.required = true;
+
+  selectType.addEventListener('change', function () {
+    populateLabelOptions(this, selectLabel);
+  });
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.textContent = '🗑';
+  delBtn.onclick = () => removeRow(delBtn);
+
+  row.appendChild(selectType);
+  row.appendChild(selectLabel);
+  row.appendChild(delBtn);
+
+  document.querySelector('#sequence-container .action-list').appendChild(row);
+  populateLabelOptions(selectType, selectLabel);  // 初始化
+}
+
+function removeRow(btn) {
+  btn.parentElement.remove();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.action-row').forEach(row => {
+    const typeSelect = row.querySelector('[name="action_type[]"]');
+    const labelSelect = row.querySelector('[name="action_label[]"]');
+    populateLabelOptions(typeSelect, labelSelect);
+  });
+});
+
+Sortable.create(document.getElementById('level_tbody'), {
+  animation: 150,
+  onEnd: function () {
+    const ids = Array.from(document.querySelectorAll('#level_tbody tr')).map(tr => tr.dataset.id);
+    fetch("{{ url_for('reorder_levels', course_id=course.id) }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: ids })
+    }).then(r => r.json()).then(res => {
+      if (res.success) location.reload();
+      else alert("更新失败: " + res.error);
+    });
+  }
+});
+</script>
+</body>
+</html>

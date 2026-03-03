@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><body>
+<h2>课程管理</h2>
+<form method="post" action="{{ url_for('add_course') }}">
+  新课程名称：<input name="title">
+  <button type="submit">添加</button>
+</form>
+<!-- 修改课程列表中每一项，加入课程详情链接 -->
+<ul>
+  {% for c in courses %}
+    <li>
+      {{ c.title }}
+      <a href="{{ url_for('course_detail', course_id=c.id) }}">→ 管理关卡</a>
+    </li>
+  {% endfor %}
+</ul>
+
+<a href="{{ url_for('dashboard') }}">返回首页</a>
+</body></html>
