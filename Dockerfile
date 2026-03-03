@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # 安装 Python 依赖
-# 使用 --no-cache-dir 减小镜像体积
-RUN pip install --no-cache-dir -r requirements.txt
+# 升级 pip 以避免旧版本 bug，并增加超时时间防止大文件下载失败
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt --default-timeout=1000
 
 # 复制项目代码
 COPY . .
